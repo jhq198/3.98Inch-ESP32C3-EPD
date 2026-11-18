@@ -6,13 +6,16 @@ const test = require("node:test");
 const vm = require("node:vm");
 const { TextEncoder } = require("node:util");
 
-function loadProvisioningApp() {
+function loadProvisioningApp(bluetooth = {}) {
   const elements = new Map();
   const document = {
     querySelector(selector) {
       if (!elements.has(selector)) {
         elements.set(selector, {
-          addEventListener() {},
+          addEventListener(type, listener) {
+            this.listeners ??= {};
+            this.listeners[type] = listener;
+          },
           dataset: {},
           disabled: false,
           textContent: "",
@@ -26,11 +29,12 @@ function loadProvisioningApp() {
     TextEncoder,
     clearTimeout,
     document,
-    navigator: { bluetooth: {} },
+    navigator: { bluetooth },
     setTimeout,
     window: { isSecureContext: true, confirm: () => true },
   });
   vm.runInContext(readFileSync("docs/provisioning.js", "utf8"), context);
+  context.testElements = elements;
   return context;
 }
 
@@ -77,4 +81,26 @@ test("credential fields enforce encoded byte limits and reject control character
     "encodeCredentialField('wifi\\nname', 'SSID', 32, false)",
     context,
   ), /ASCII 控制字符/);
+});
+
+test("device scan filters by advertised name and permits access to the GATT service", async () => {
+  let requestOptions;
+  const bluetooth = {
+    async requestDevice(options) {
+      requestOptions = options;
+      const error = new Error("No matching devices");
+      error.name = "NotFoundError";
+      throw error;
+    },
+  };
+  const context = loadProvisioningApp(bluetooth);
+  const connectButton = context.testElements.get("#connect");
+
+  await connectButton.listeners.click();
+
+  assert.deepEqual(JSON.parse(JSON.stringify(requestOptions)), {
+    filters: [{ namePrefix: "EPD-Calendar" }],
+    optionalServices: ["7b4d0001-6a6c-4c61-9f20-65706463616c"],
+  });
+  assert.match(context.testElements.get("#status").textContent, /请确认设备已上电且在附近/);
 });
