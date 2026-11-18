@@ -80,9 +80,15 @@ today_plan 等任意文本依赖 flash 内置字库，覆盖 `charactor_list.txt
 
 ## CI 固件发布
 
-GitHub Actions 会在推送到 `main`、针对 `main` 的 PR，以及推送 `v*` 标签时使用 ESP-IDF 6.0.2 构建固件。推送版本标签（例如 `v1.0.0`）会自动创建 GitHub Release，并附上 `firmware-release.zip`，其中包含启动加载程序、分区表、应用固件和字库，以及 SHA-256 校验值和烧录说明。
+GitHub Actions 会在推送到 `main`、针对 `main` 的 PR，以及推送 `v*` 标签时使用 ESP-IDF 6.0.2 构建固件。推送版本标签（例如 `v1.0.0`）会自动创建 GitHub Release，并附上 `firmware-release.zip`，其中包含启动加载程序、分区表、应用固件、字库，以及可从 `0x0` 一次烧录的 `firmware-full.bin`，并提供 SHA-256 校验值和烧录说明。
 
-下载并解压发布包后，按包内 `README.txt` 的地址写入固件。此方式只更新固件和字库分区，不会擦除 NVS 配置或照片分区。
+全量烧录 `firmware-full.bin` 会覆盖 NVS 配置和照片分区，适用于新设备或完整重刷。若需保留设备配置和照片，请按包内 `README.txt` 使用分区地址分别烧录固件与字库。
+
+## Web 蓝牙配网
+
+配网页面源码在 [`docs/index.html`](docs/index.html) 和 [`docs/provisioning.js`](docs/provisioning.js)，按 [`docs/ble_protocol.md`](docs/ble_protocol.md) 实现 BLE 配网协议。GitHub Actions 会运行页面脚本检查与协议单元测试，并在 `main` 更新后发布到 [GitHub Pages](https://jhq198.github.io/3.98Inch-ESP32C3-EPD/)；首次启用时需在仓库 Settings → Pages 将发布来源设为 GitHub Actions。
+
+页面需在支持 Web Bluetooth 的 Chrome/Edge 中通过 HTTPS 打开。当前固件 BLE 不加密，Wi-Fi 密码会以明文通过蓝牙传输，请只在可信的近距离环境配网。
 
 ## BLE 接口
 

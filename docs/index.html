@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#f5f7fb">
+  <title>墨水屏设备配网</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: #172033;
+      background: #f5f7fb;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 32px 16px;
+    }
+
+    main {
+      width: min(100%, 560px);
+      margin: 0 auto;
+    }
+
+    h1 { margin: 0 0 8px; font-size: 1.65rem; }
+    p { line-height: 1.6; }
+
+    .card {
+      margin-top: 18px;
+      padding: 22px;
+      border: 1px solid #dfe5ef;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 8px 26px rgb(23 32 51 / 5%);
+    }
+
+    .muted { color: #596579; }
+
+    .notice {
+      padding: 12px 14px;
+      border-radius: 9px;
+      background: #fff6db;
+      color: #654b00;
+      font-size: .92rem;
+    }
+
+    .status {
+      min-height: 48px;
+      padding: 12px 14px;
+      border-radius: 9px;
+      background: #edf1f7;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .status[data-kind="success"] { background: #e6f6ed; color: #145c32; }
+    .status[data-kind="error"] { background: #ffebeb; color: #8b2020; }
+    .status[data-kind="working"] { background: #eaf2ff; color: #174b8a; }
+
+    label { display: block; margin: 16px 0 6px; font-weight: 650; }
+
+    input {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 12px;
+      border: 1px solid #b9c3d2;
+      border-radius: 8px;
+      font: inherit;
+    }
+
+    input:focus { outline: 3px solid #b8d5ff; border-color: #2768c7; }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+
+    button {
+      min-height: 44px;
+      padding: 10px 15px;
+      border: 0;
+      border-radius: 8px;
+      background: #205fbd;
+      color: #fff;
+      font: inherit;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    button.secondary { background: #e7edf5; color: #21334e; }
+    button.danger { background: #a93232; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+
+    ul { padding-left: 22px; line-height: 1.7; }
+    a { color: #205fbd; }
+    .small { font-size: .88rem; }
+
+    @media (max-width: 420px) {
+      body { padding: 20px 12px; }
+      .card { padding: 17px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>墨水屏设备配网</h1>
+    <p class="muted">通过蓝牙将 Wi-Fi 凭据发送给 EPD-Calendar。请在设备附近操作。</p>
+
+    <section class="card" aria-labelledby="connection-heading">
+      <h2 id="connection-heading">设备连接</h2>
+      <div id="status" class="status" role="status" aria-live="polite">尚未连接设备</div>
+      <div class="actions">
+        <button id="connect" type="button">扫描并连接设备</button>
+        <button id="disconnect" class="secondary" type="button" disabled>断开连接</button>
+      </div>
+      <p id="device-state" class="muted small">Wi-Fi 状态：未知</p>
+    </section>
+
+    <section class="card" aria-labelledby="wifi-heading">
+      <h2 id="wifi-heading">Wi-Fi 设置</h2>
+      <form id="wifi-form">
+        <label for="ssid">Wi-Fi 名称（SSID）</label>
+        <input id="ssid" name="ssid" type="text" maxlength="32" autocomplete="off"
+               autocapitalize="off" spellcheck="false" required>
+        <label for="password">Wi-Fi 密码</label>
+        <input id="password" name="password" type="password" maxlength="64"
+               autocomplete="new-password">
+        <p class="muted small">SSID 最多 32 字节，密码最多 64 字节；密码留空表示开放网络。</p>
+        <div class="actions">
+          <button id="submit" type="submit" disabled>保存并连接 Wi-Fi</button>
+          <button id="clear" class="danger" type="button" disabled>清除设备 Wi-Fi</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>使用说明与安全</h2>
+      <div class="notice">
+        当前固件的 BLE 链路不加密。Wi-Fi 密码会经蓝牙明文发送；只在可信的近距离环境配网。
+        页面不会保存或记录密码。
+      </div>
+      <ul class="small">
+        <li>需要支持 Web Bluetooth 的 Chrome 或 Edge，并通过 HTTPS 打开；iOS Safari 不支持。</li>
+        <li>设备需已上电且在蓝牙范围内。连接后选择设备并填写 Wi-Fi 信息。</li>
+        <li>命令“已保存”仅表示设备接受了凭据；页面会继续查询设备的 Wi-Fi 连接状态。</li>
+      </ul>
+      <p class="small">
+        协议说明：<a href="./ble_protocol.md">BLE 控制协议</a> ·
+        <a href="./ble_handover.md">客户端交接说明</a>
+      </p>
+    </section>
+  </main>
+  <script src="./provisioning.js"></script>
+</body>
+</html>

@@ -12,6 +12,60 @@ permissions:
   contents: read
 
 jobs:
+  web-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate provisioning app
+        run: |
+          node --check docs/provisioning.js
+          node --test tools/test_provisioning.js
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+
+          class PageParser(HTMLParser):
+              pass
+
+          parser = PageParser()
+          parser.feed(Path("docs/index.html").read_text(encoding="utf-8"))
+          parser.close()
+          PY
+
+  pages:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: web-check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -35,8 +89,23 @@ jobs:
           cp build/epd_3in98_c3.bin dist/firmware/app.bin
           cp tools/font/fonts.bin dist/firmware/
           test "$(stat -c%s dist/firmware/fonts.bin)" -le 393216
+          esptool.py --chip esp32c3 merge_bin \
+            --output dist/firmware/firmware-full.bin \
+            --flash_size 4MB \
+            0x0 dist/firmware/bootloader.bin \
+            0x8000 dist/firmware/partition-table.bin \
+            0x10000 dist/firmware/app.bin \
+            0x270000 dist/firmware/fonts.bin
           cat > dist/firmware/README.txt <<'EOF'
           ESP32-C3 3.98-inch E-Paper firmware
+
+          For a new device or a full reinstall, flash the assembled image:
+          esptool.py --chip esp32c3 --port PORT --flash_size 4MB write_flash \
+            0x0 firmware-full.bin
+
+          WARNING: firmware-full.bin includes blank space between partitions. Flashing
+          it erases the existing NVS settings and photos. To preserve them, flash only
+          the firmware and font partitions with the commands below.
 
           Flash from this directory, replacing PORT with the serial port for the device:
           esptool.py --chip esp32c3 --port PORT --flash_size 4MB write_flash \
@@ -49,7 +118,7 @@ jobs:
           and font partition without erasing the NVS or photos partitions.
           Verify files with: sha256sum -c SHA256SUMS
           EOF
-          (cd dist/firmware && sha256sum bootloader.bin partition-table.bin app.bin fonts.bin > SHA256SUMS)
+          (cd dist/firmware && sha256sum bootloader.bin partition-table.bin app.bin fonts.bin firmware-full.bin > SHA256SUMS)
           python - <<'PY'
           from pathlib import Path
           from zipfile import ZIP_DEFLATED, ZipFile
