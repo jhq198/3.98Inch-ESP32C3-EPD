@@ -83,7 +83,7 @@ test("credential fields enforce encoded byte limits and reject control character
   ), /ASCII 控制字符/);
 });
 
-test("device scan filters by advertised name and permits access to the GATT service", async () => {
+test("device chooser includes all nearby BLE devices and permits GATT service access", async () => {
   let requestOptions;
   const bluetooth = {
     async requestDevice(options) {
@@ -99,8 +99,8 @@ test("device scan filters by advertised name and permits access to the GATT serv
   await connectButton.listeners.click();
 
   assert.deepEqual(JSON.parse(JSON.stringify(requestOptions)), {
-    filters: [{ namePrefix: "EPD-Calendar" }],
+    acceptAllDevices: true,
     optionalServices: ["7b4d0001-6a6c-4c61-9f20-65706463616c"],
   });
-  assert.match(context.testElements.get("#status").textContent, /请确认设备已上电且在附近/);
+  assert.match(context.testElements.get("#status").textContent, /未发现蓝牙设备或已取消选择/);
 });

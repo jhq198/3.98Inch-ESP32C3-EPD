@@ -205,7 +205,7 @@ async function connectDevice() {
   try {
     setStatus("正在扫描设备…", "working");
     bluetoothDevice = await navigator.bluetooth.requestDevice({
-      filters: [{ namePrefix: "EPD-Calendar" }],
+      acceptAllDevices: true,
       optionalServices: [SERVICE_UUID],
     });
     bluetoothDevice.addEventListener("gattserverdisconnected", onDisconnected);
@@ -229,7 +229,7 @@ async function connectDevice() {
       setConnected(false);
     }
     setStatus(error.name === "NotFoundError"
-      ? "未发现或未选择 EPD-Calendar。请确认设备已上电且在附近，然后重新扫描。"
+      ? "未发现蓝牙设备或已取消选择。请确认设备已上电且在附近，然后重新扫描。"
       : `连接失败：${error.message}`, "error");
   }
 }
