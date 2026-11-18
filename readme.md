@@ -78,6 +78,12 @@ today_plan 等任意文本依赖 flash 内置字库，覆盖 `charactor_list.txt
 
 未烧录字库时设备仍可正常启动，缺失字形以空白显示。
 
+## CI 固件发布
+
+GitHub Actions 会在推送到 `main`、针对 `main` 的 PR，以及推送 `v*` 标签时使用 ESP-IDF 6.0.2 构建固件。推送版本标签（例如 `v1.0.0`）会自动创建 GitHub Release，并附上 `firmware-release.zip`，其中包含启动加载程序、分区表、应用固件和字库，以及 SHA-256 校验值和烧录说明。
+
+下载并解压发布包后，按包内 `README.txt` 的地址写入固件。此方式只更新固件和字库分区，不会擦除 NVS 配置或照片分区。
+
 ## BLE 接口
 
 | 特征 | UUID | 用途 |

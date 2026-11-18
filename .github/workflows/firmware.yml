@@ -1,0 +1,85 @@
+name: Firmware
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install ESP-IDF
+        uses: espressif/install-esp-idf-action@v1
+        with:
+          version: v6.0.2
+
+      - name: Build firmware
+        run: idf.py build
+
+      - name: Package firmware
+        run: |
+          set -euo pipefail
+          mkdir -p dist/firmware
+          cp build/bootloader/bootloader.bin dist/firmware/
+          cp build/partition_table/partition-table.bin dist/firmware/
+          cp build/epd_3in98_c3.bin dist/firmware/app.bin
+          cp tools/font/fonts.bin dist/firmware/
+          test "$(stat -c%s dist/firmware/fonts.bin)" -le 393216
+          cat > dist/firmware/README.txt <<'EOF'
+          ESP32-C3 3.98-inch E-Paper firmware
+
+          Flash from this directory, replacing PORT with the serial port for the device:
+          esptool.py --chip esp32c3 --port PORT --flash_size 4MB write_flash \
+            0x0 bootloader.bin \
+            0x8000 partition-table.bin \
+            0x10000 app.bin \
+            0x270000 fonts.bin
+
+          These addresses match the included partition table. This updates the firmware
+          and font partition without erasing the NVS or photos partitions.
+          Verify files with: sha256sum -c SHA256SUMS
+          EOF
+          (cd dist/firmware && sha256sum bootloader.bin partition-table.bin app.bin fonts.bin > SHA256SUMS)
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZIP_DEFLATED, ZipFile
+
+          package = Path("dist/firmware")
+          with ZipFile("dist/firmware-release.zip", "w", ZIP_DEFLATED) as archive:
+              for file in sorted(package.iterdir()):
+                  archive.write(file, file.name)
+          PY
+
+      - name: Upload firmware package
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-release
+          path: dist/firmware-release.zip
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download firmware package
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-release
+          path: dist
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/firmware-release.zip --generate-notes
